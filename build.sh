@@ -10,6 +10,9 @@ ENV_ROOT=`pwd`
 rm -rf "$BUILD_DIR" "$TARGET_DIR"
 mkdir -p "$BUILD_DIR" "$TARGET_DIR"
 
+export CFLAGS="-mmacosx-version-min=10.6 -I$TARGET_DIR/include"
+export LDFLAGS="-L$TARGET_DIR/lib -lm"
+
 # NOTE: this is a fetchurl parameter, nothing to do with the current script
 #export TARGET_DIR_DIR="$BUILD_DIR"
 
@@ -26,6 +29,7 @@ cd $BUILD_DIR
 ../fetchurl "http://downloads.sourceforge.net/project/faac/faac-src/faac-1.28/faac-1.28.tar.bz2?use_mirror=auto"
 ../fetchurl "ftp://ftp.videolan.org/pub/videolan/x264/snapshots/x264-snapshot-20120425-2245.tar.bz2"
 ../fetchurl "http://downloads.xvid.org/downloads/xvidcore-1.3.2.tar.gz"
+../fetchurl "http://www.libsdl.org/release/SDL-1.2.15.tar.gz"
 ../fetchurl "http://downloads.sourceforge.net/project/lame/lame/3.99/lame-3.99.5.tar.gz?use_mirror=auto"
 ../fetchurl "http://www.ffmpeg.org/releases/ffmpeg-0.11.1.tar.gz"
 
@@ -91,19 +95,28 @@ cd "$BUILD_DIR/xvidcore/build/generic"
 make -j 4 && make install
 #rm $TARGET_DIR/lib/libxvidcore.so.*
 
+echo "*** Building SDL ***"
+cd "$BUILD_DIR/SDL-1.2.15"
+./configure --prefix=$TARGET_DIR --enable-static --enable-shared=no
+make -j 4 && make install
+
 echo "*** Building lame ***"
 cd "$BUILD_DIR/lame-3.99.5"
 ./configure --prefix=$TARGET_DIR --enable-static --disable-shared
 make -j 4 && make install
 
 # FIXME: only OS-sepcific
-rm -f "$TARGET_DIR/lib/*.dylib"
-rm -f "$TARGET_DIR/lib/*.so"
+pushd "$TARGET_DIR/lib"
+# rm -f "$TARGET_DIR/lib/*.dylib"
+# rm -f "$TARGET_DIR/lib/*.so"
+find . -iname '*.dylib' -delete
+find . -iname '*.so' -delete
+popd
 
 # FFMpeg
 echo "*** Building FFmpeg ***"
 cd "$BUILD_DIR/ffmpeg-0.11.1"
 patch -p1 <../../ffmpeg_config.patch
-CFLAGS="-I$TARGET_DIR/include" LDFLAGS="-L$TARGET_DIR/lib -lm" ./configure --prefix=${OUTPUT_DIR:-$TARGET_DIR} --extra-version=static --disable-debug --disable-shared --enable-static --extra-cflags=--static --disable-ffplay --disable-ffserver --disable-doc --enable-gpl --enable-pthreads --enable-postproc --enable-gray --enable-runtime-cpudetect --enable-libfaac --enable-libmp3lame --enable-libtheora --enable-libvorbis --enable-libx264 --enable-libxvid --enable-bzlib --enable-zlib --enable-nonfree --enable-version3 --enable-libvpx --disable-devices
+./configure --prefix=${OUTPUT_DIR:-$TARGET_DIR} --extra-version=static --disable-debug --disable-shared --enable-static --extra-cflags=--static --disable-ffplay --disable-ffserver --disable-doc --enable-gpl --enable-pthreads --enable-postproc --enable-gray --enable-runtime-cpudetect --enable-libfaac --enable-libmp3lame --enable-libtheora --enable-libvorbis --enable-libx264 --enable-libxvid --enable-bzlib --enable-zlib --enable-nonfree --enable-version3 --enable-libvpx --disable-devices
 make -j 4 && make install
 
